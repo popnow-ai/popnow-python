@@ -1,0 +1,31 @@
+# popnow-python
+
+> Typed Python SDK (package `popnow`, Python 3.9+, depends only on httpx) for the PopNow API, which generates AI videos, images, music and speech with models such as Kling, Seedance, Wan, Vidu, MiniMax, Nano Banana, GPT Image, Flux and Suno. Same credits and prices as popnow.ai (1 credit = $0.01).
+
+Install: `pip install popnow`. Auth: `PopNow(api_key=...)` or the `POPNOW_API_KEY` environment variable (`sk-popnow-...`, created at https://popnow.ai/api/console/keys). Base URL `https://api.popnow.ai`; endpoints under `/api/v1`. Every JSON response is `{code, msg, data, request_id}`; `code` 200 is success.
+
+## Core usage
+
+- `client.images.generate(model="alibaba/z-image-turbo/text-to-image", prompt=...)` returns a finished `Task`; `task.urls[0]` is a signed link valid ~20 minutes.
+- `client.videos.generate(model="alibaba/wan-3.0/image-to-video", image_url=..., prompt=..., resolution="480p", duration_seconds=5)`.
+- `client.audio.speech(model=..., text=..., voice_id=...)`, `client.audio.music(model=..., prompt=...)`, `client.audio.transcribe(model=..., audio_url=...)`.
+- Low level: `client.jobs.quote()`, `client.jobs.create()` (POST /api/v1/jobs/createTask, Idempotency-Key header), `client.jobs.get()` (GET /api/v1/jobs/recordInfo), `client.jobs.wait()`, `client.jobs.list()`, `client.jobs.retry()`, `client.jobs.purge()`.
+- Files: `client.files.upload(path)` -> `popnow://f/fil_...`; `client.files.download(asset, dest)`; `client.files.import_lora(url)`.
+- Asset library: `client.assets.save_task_output()`, `save_upload()`, `save_url()`, `list()`, `iter()`, `get()`, `update()`, `delete()`, `usage()` -> `popnow://a/ast_...`.
+- Account: `client.account.balance()` (availableCredits), `client.account.usage()`.
+- Async: `AsyncPopNow` mirrors every method with `await`.
+- Webhooks: `popnow.webhooks.verify_task_callback(raw_body, headers, secret)`; `verify_endpoint_event(...)` for Standard Webhooks endpoints.
+
+## Errors
+
+AuthenticationError (401), InsufficientCreditsError (40201), SpendCapExceededError (40202), PermissionDeniedError (403, 4030x, 40310), NotFoundError (404), ConflictError (409), QuoteMismatchError (40901), RateLimitError (429, retry_after), ServiceUnavailableError (503, 50302), ModelUnavailableError (50301), BadRequestError (400, 40003, 40004), TaskFailedError (task failed/expired, error_code), WaitTimeoutError. All APIError instances carry code, status_code, message, request_id, reason.
+
+## Links
+
+- Website: https://popnow.ai
+- Docs: https://popnow.ai/docs
+- OpenAPI: https://popnow.ai/docs/openapi.yaml
+- Pricing: https://popnow.ai/pricing
+- MCP server: https://popnow.ai/mcp (remote endpoint https://api.popnow.ai/mcp)
+- Site llms.txt: https://popnow.ai/llms.txt
+- Source: https://github.com/popnow-ai/popnow-python
