@@ -33,10 +33,8 @@ PopNow is a browser-based AI studio for videos, images and music: image-to-video
 **1. Install** (Python 3.9+):
 
 ```bash
-pip install "git+https://github.com/popnow-ai/popnow-python"
+pip install popnow
 ```
-
-A PyPI release is coming; until then, install from GitHub as above (pin a commit or tag with `@<ref>` for reproducible builds).
 
 **2. Create an API key** in the [API console](https://popnow.ai/api/console/keys) and export it:
 

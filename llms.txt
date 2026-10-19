@@ -2,7 +2,7 @@
 
 > Typed Python SDK (package `popnow`, Python 3.9+, depends only on httpx) for the PopNow API, which generates AI videos, images, music and speech with models such as Kling, Seedance, Wan, Vidu, MiniMax, Nano Banana, GPT Image, Flux and Suno. Same credits and prices as popnow.ai (1 credit = $0.01).
 
-Install: `pip install git+https://github.com/popnow-ai/popnow-python` (PyPI release coming). Auth: `PopNow(api_key=...)` or the `POPNOW_API_KEY` environment variable (`sk-popnow-...`, created at https://popnow.ai/api/console/keys). Base URL `https://api.popnow.ai`; endpoints under `/api/v1`. Every JSON response is `{code, msg, data, request_id}`; `code` 200 is success.
+Install: `pip install popnow`. Auth: `PopNow(api_key=...)` or the `POPNOW_API_KEY` environment variable (`sk-popnow-...`, created at https://popnow.ai/api/console/keys). Base URL `https://api.popnow.ai`; endpoints under `/api/v1`. Every JSON response is `{code, msg, data, request_id}`; `code` 200 is success.
 
 ## Core usage
 
