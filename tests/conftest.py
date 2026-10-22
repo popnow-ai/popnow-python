@@ -24,7 +24,7 @@ def task_record(state: str = "succeeded", task_id: str = "job_1", **extra: Any) 
         "taskId": task_id,
         "model": "alibaba/z-image-turbo/text-to-image",
         "state": state,
-        "cost": "0.02",
+        "cost": "0.002",
         "credits": 2,
         "settled": state != "queued" and state != "running",
         "createdAt": "2026-10-16T09:00:00Z",

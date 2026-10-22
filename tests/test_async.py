@@ -19,7 +19,7 @@ async def test_async_balance_and_errors(mock: respx.MockRouter, sleeps: List[flo
     mock.get(f"{BASE}/api/v1/chat/credit").respond(
         200,
         json=envelope(
-            {"available": "1", "held": "0", "total": "1", "availableCredits": 100, "heldCredits": 0, "totalCredits": 100}
+            {"available": "0.1", "held": "0", "total": "0.1", "availableCredits": 100, "heldCredits": 0, "totalCredits": 100}
         ),
     )
     mock.get(f"{BASE}/api/v1/jobs/recordInfo").respond(404, json=envelope(code=404, msg="Not found"))
@@ -37,7 +37,7 @@ async def test_async_retry_and_wait(mock: respx.MockRouter, sleeps: List[float])
             respx.MockResponse(
                 202,
                 json=envelope(
-                    {"taskId": "job_1", "state": "queued", "estimatedCredits": 1, "estimatedCost": "0.01", "deadlineAt": "x"}
+                    {"taskId": "job_1", "state": "queued", "estimatedCredits": 1, "estimatedCost": "0.001", "deadlineAt": "x"}
                 ),
             ),
         ]

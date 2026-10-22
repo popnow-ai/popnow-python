@@ -23,7 +23,7 @@ def _callback_body() -> bytes:
             "state": "succeeded",
             "output": {"assets": [{"url": "https://media.example.com/v.mp4", "mime": "video/mp4"}]},
             "credits": 34,
-            "cost": "0.34",
+            "cost": "0.034",
             "settled": True,
         },
         "request_id": "whd_01",

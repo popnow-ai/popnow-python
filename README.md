@@ -57,7 +57,7 @@ print(task.state, task.credits, task.urls[0])
 client.files.download(task.assets[0], "fox.png")
 ```
 
-That image costs a couple of credits (1 credit = $0.01). Buy credits on the [pricing page](https://popnow.ai/pricing); API calls and the website share one wallet.
+That image costs about 10 credits (1 credit = $0.001). Buy credits on the [pricing page](https://popnow.ai/pricing); API calls and the website share one wallet.
 
 ## What you can call
 
@@ -263,7 +263,7 @@ Call `client.videos.generate(model="alibaba/wan-3.0/image-to-video", image_url=.
 
 ### How much does the PopNow API cost?
 
-The API uses the same credits and prices as popnow.ai: 1 credit = $0.01, bought in credit packs with no subscription. Each model lists its price in `client.models.get(id).credits`, and `client.jobs.quote()` returns the exact amount for one request. Failed and expired tasks release their hold, so they cost nothing.
+The API uses the same credits and prices as popnow.ai: 1 credit = $0.001, bought in credit packs with no subscription. Each model lists its price in `client.models.get(id).credits`, and `client.jobs.quote()` returns the exact amount for one request. Failed and expired tasks release their hold, so they cost nothing.
 
 ### How do I retry an AI generation request without being charged twice?
 

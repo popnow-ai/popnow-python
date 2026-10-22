@@ -38,9 +38,9 @@ def test_sends_auth_user_agent_and_language(mock: respx.MockRouter, sleeps: List
         200,
         json=envelope(
             {
-                "available": "12.34",
-                "held": "0.66",
-                "total": "13.00",
+                "available": "1.234",
+                "held": "0.066",
+                "total": "1.300",
                 "availableCredits": 1234,
                 "heldCredits": 66,
                 "totalCredits": 1300,
@@ -56,7 +56,7 @@ def test_sends_auth_user_agent_and_language(mock: respx.MockRouter, sleeps: List
     assert request.headers["accept-language"] == "de"
     assert request.headers["x-trace"] == "abc"
     assert balance.available_credits == 1234
-    assert balance.total == "13.00"
+    assert balance.total == "1.300"
     assert balance["heldCredits"] == 66
 
 
@@ -71,16 +71,16 @@ def test_usage_query_parameters(mock: respx.MockRouter, client: PopNow) -> None:
                 "to": "2026-10-16",
                 "currency": "USD",
                 "totalCalls": 3,
-                "totalSpend": "0.40",
+                "totalSpend": "0.040",
                 "totalCredits": 40,
-                "days": [{"day": "2026-10-02", "calls": 3, "succeeded": 2, "failed": 1, "spend": "0.40", "credits": 40}],
+                "days": [{"day": "2026-10-02", "calls": 3, "succeeded": 2, "failed": 1, "spend": "0.040", "credits": 40}],
                 "models": [
                     {
                         "model": "alibaba/wan-3.0/image-to-video",
                         "calls": 3,
                         "succeeded": 2,
                         "failed": 1,
-                        "spend": "0.40",
+                        "spend": "0.040",
                         "credits": 40,
                     }
                 ],

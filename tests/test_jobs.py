@@ -18,7 +18,7 @@ CREATED = {
     "taskId": "job_1",
     "state": "queued",
     "estimatedCredits": 34,
-    "estimatedCost": "0.34",
+    "estimatedCost": "0.034",
     "deadlineAt": "2026-10-16T09:40:00Z",
 }
 
@@ -32,8 +32,8 @@ def test_quote(mock: respx.MockRouter, client: PopNow) -> None:
                 "model": MODEL,
                 "maxCredits": 68,
                 "expectedCredits": 68,
-                "estimatedCost": "0.68",
-                "maxCharge": "0.68",
+                "estimatedCost": "0.068",
+                "maxCharge": "0.068",
                 "currency": "USD",
                 "quantity": "5",
                 "unit": "per_second",

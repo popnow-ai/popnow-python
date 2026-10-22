@@ -5,7 +5,7 @@ Every object keeps the untouched JSON in ``raw`` so fields added to the API
 later are never lost, and ``obj["camelCaseKey"]`` reads from it directly.
 
 Timestamps are kept as the ISO 8601 strings the API returns. USD amounts are
-decimal strings (``"0.34"``); credit amounts are integers (1 credit = $0.01).
+decimal strings (``"0.185"``); credit amounts are integers (1 credit = $0.001).
 """
 
 from __future__ import annotations

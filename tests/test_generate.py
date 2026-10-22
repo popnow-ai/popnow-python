@@ -52,7 +52,7 @@ def test_videos_generate_polls_after_server_wait(mock: respx.MockRouter, client:
     create = mock.post(f"{BASE}/api/v1/jobs/createTask").respond(
         202,
         json=envelope(
-            {"taskId": "job_1", "state": "queued", "estimatedCredits": 34, "estimatedCost": "0.34", "deadlineAt": "x"}
+            {"taskId": "job_1", "state": "queued", "estimatedCredits": 34, "estimatedCost": "0.034", "deadlineAt": "x"}
         ),
     )
     mock.get(f"{BASE}/api/v1/jobs/recordInfo").mock(side_effect=[_terminal("running"), _terminal("succeeded")])
