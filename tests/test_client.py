@@ -38,9 +38,12 @@ def test_sends_auth_user_agent_and_language(mock: respx.MockRouter, sleeps: List
         200,
         json=envelope(
             {
-                "available": "1.234",
-                "held": "0.066",
-                "total": "1.300",
+                "availableUsd": "1.2345",
+                "heldUsd": "0.0655",
+                "totalUsd": "1.3",
+                "available": "1.2345",
+                "held": "0.0655",
+                "total": "1.3",
                 "availableCredits": 1234,
                 "heldCredits": 66,
                 "totalCredits": 1300,
@@ -55,9 +58,23 @@ def test_sends_auth_user_agent_and_language(mock: respx.MockRouter, sleeps: List
     assert re.fullmatch(r"popnow-python/\S+ httpx/\S+ python/\d+\.\d+\.\d+\S*", user_agent), user_agent
     assert request.headers["accept-language"] == "de"
     assert request.headers["x-trace"] == "abc"
-    assert balance.available_credits == 1234
-    assert balance.total == "1.300"
-    assert balance["heldCredits"] == 66
+    assert balance.available_usd == "1.2345"
+    assert balance.held_usd == "0.0655"
+    assert balance.total_usd == "1.3"
+    assert balance["availableUsd"] == "1.2345"
+    # Deprecated credit projections still parse.
+    assert balance.available_credits == 1234 and balance.held_credits == 66 and balance.total_credits == 1300
+
+
+def test_balance_legacy_shape_fills_usd_fields() -> None:
+    from popnow.types import Balance
+
+    balance = Balance.from_dict(
+        {"available": "0.5", "held": "0", "total": "0.5", "availableCredits": 500, "heldCredits": 0, "totalCredits": 500}
+    )
+    assert balance.available_usd == "0.5" and balance.held_usd == "0" and balance.total_usd == "0.5"
+    assert balance.available_credits == 500
+    assert "availableUsd" not in balance.to_dict()  # raw JSON is never rewritten
 
 
 def test_usage_query_parameters(mock: respx.MockRouter, client: PopNow) -> None:
@@ -92,8 +109,11 @@ def test_usage_query_parameters(mock: respx.MockRouter, client: PopNow) -> None:
     assert params["from"] == "2026-10-01"
     assert params["to"] == "2026-10-16"
     assert usage.from_ == "2026-10-01"
-    assert usage.total_credits == 40
-    assert usage.days[0].failed == 1
+    assert usage.currency == "USD"
+    assert usage.total_spend == "0.040"
+    assert usage.days[0].failed == 1 and usage.days[0].spend == "0.040"
+    assert usage.models[0].spend == "0.040"
+    assert usage.total_credits == 40 and usage.days[0].credits == 40  # deprecated, still parsed
     assert usage.models[0].model == "alibaba/wan-3.0/image-to-video"
 
 
@@ -115,7 +135,8 @@ def test_models_list_and_get(mock: respx.MockRouter, client: PopNow) -> None:
         "badges": ["no_watermark"],
         "relatedModels": [],
         "updatedAt": "2026-10-01T00:00:00Z",
-        "credits": {"unit": "per_second", "perUnit": 6.75},
+        "usd": {"unit": "per_second", "perUnit": "0.09", "currency": "USD"},
+        "credits": {"unit": "per_second", "perUnit": 90},
         "inputSchema": {"type": "object", "properties": {"image_url": {"type": "string"}}},
     }
     list_route = mock.get(f"{BASE}/api/v1/models").respond(200, json=envelope({"total": 1, "items": [model]}))
@@ -130,7 +151,8 @@ def test_models_list_and_get(mock: respx.MockRouter, client: PopNow) -> None:
     first = next(iter(models))
     assert first.display_name == "Wan 3.0"
     assert first.async_ is True
-    assert first.credits == {"unit": "per_second", "perUnit": 6.75}
+    assert first.usd == {"unit": "per_second", "perUnit": "0.09", "currency": "USD"}
+    assert first.credits == {"unit": "per_second", "perUnit": 90}  # deprecated, still parsed
 
     one = client.models.get("alibaba/wan-3.0/image-to-video")
     assert get_route.called
@@ -169,6 +191,7 @@ def test_task_object_helpers() -> None:
         }
     )
     assert task.is_terminal and task.is_succeeded
+    assert task.cost_usd is None and task.credits is None
     assert task.text == "hello world"
     assert task.urls == []
     assert task.retention is not None and task.retention.source == "account"

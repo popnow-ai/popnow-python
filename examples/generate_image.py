@@ -14,6 +14,6 @@ task = client.images.generate(
     aspect_ratio="1:1",
 )
 
-print("state:", task.state, "credits charged:", task.credits)
+print("state:", task.state, "charged:", task.cost_usd, "USD")
 path = client.files.download(task.assets[0], "fox.png")
 print("saved", path)

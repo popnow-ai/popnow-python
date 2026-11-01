@@ -14,7 +14,7 @@ CASES = [
     (400, 400, popnow.BadRequestError),
     (400, 40004, popnow.BadRequestError),
     (401, 401, popnow.AuthenticationError),
-    (402, 40201, popnow.InsufficientCreditsError),
+    (402, 40201, popnow.InsufficientBalanceError),
     (402, 40202, popnow.SpendCapExceededError),
     (403, 40301, popnow.PermissionDeniedError),
     (403, 40310, popnow.PermissionDeniedError),
@@ -43,10 +43,13 @@ def test_error_envelope_maps_to_exception(
     assert "req_abc" in str(err)
 
 
-def test_insufficient_credits_is_a_payment_error(mock: respx.MockRouter, client: PopNow) -> None:
+def test_insufficient_balance_is_a_payment_error(mock: respx.MockRouter, client: PopNow) -> None:
     mock.post(f"{BASE}/api/v1/jobs/createTask").respond(402, json=envelope(code=40201, msg="Insufficient balance"))
     with pytest.raises(popnow.PaymentRequiredError) as info:
         client.jobs.create(model="m/x/text-to-image", input={"prompt": "p"})
+    assert isinstance(info.value, popnow.InsufficientBalanceError)
+    # The deprecated name is the same class, so existing except clauses keep working.
+    assert popnow.InsufficientCreditsError is popnow.InsufficientBalanceError
     assert isinstance(info.value, popnow.InsufficientCreditsError)
 
 

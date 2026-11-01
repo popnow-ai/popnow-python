@@ -22,8 +22,10 @@ def _callback_body() -> bytes:
             "model": "alibaba/wan-3.0/image-to-video",
             "state": "succeeded",
             "output": {"assets": [{"url": "https://media.example.com/v.mp4", "mime": "video/mp4"}]},
-            "credits": 34,
-            "cost": "0.034",
+            "costUsd": "0.225",
+            "cost": "0.225",
+            "credits": 225,
+            "exactCredits": "225",
             "settled": True,
         },
         "request_id": "whd_01",
@@ -48,7 +50,9 @@ def test_task_callback_valid_signature() -> None:
     event = webhooks.verify_task_callback(body, headers, SECRET, now=NOW + 10)
     assert event["request_id"] == "whd_01"
     task = webhooks.task_from_event(event)
-    assert task.state == "succeeded" and task.credits == 34
+    assert task.state == "succeeded" and task.settled is True
+    assert task.cost_usd == "0.225"
+    assert task.credits == 225  # deprecated, still parsed
 
 
 def test_task_callback_headers_are_case_insensitive() -> None:

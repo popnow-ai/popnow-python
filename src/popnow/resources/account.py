@@ -20,7 +20,11 @@ class Account:
         self._client = client
 
     def balance(self) -> Balance:
-        """Available, held and total credits of the account wallet."""
+        """Available, held and total USD of the API balance (``available_usd`` ...).
+
+        The API balance is separate from popnow.ai website credits. The endpoint
+        path ``/api/v1/chat/credit`` is a historical name.
+        """
         result = self._client._request("GET", "/api/v1/chat/credit")
         return Balance.from_dict(result.data)
 

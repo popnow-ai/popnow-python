@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import decimal
 import json
 from typing import List
 
@@ -17,35 +18,51 @@ INPUT = {"image_url": "https://media.popnow.ai/movie/lighthouse.webp", "resoluti
 CREATED = {
     "taskId": "job_1",
     "state": "queued",
-    "estimatedCredits": 34,
-    "estimatedCost": "0.034",
+    "estimatedCostUsd": "0.225",
+    "estimatedCost": "0.225",
+    "estimatedCredits": 225,
     "deadlineAt": "2026-10-16T09:40:00Z",
+}
+
+QUOTE = {
+    "quoteId": "q_1",
+    "model": MODEL,
+    "maxChargeUsd": "0.225",
+    "expectedChargeUsd": "0.1875",
+    "expectedCharge": "0.1875",
+    "estimatedCost": "0.225",
+    "maxCharge": "0.225",
+    "maxCredits": 225,
+    "expectedCredits": 188,
+    "currency": "USD",
+    "quantity": "5",
+    "unit": "per_second",
+    "expiresAt": "2026-10-16T09:25:00Z",
 }
 
 
 def test_quote(mock: respx.MockRouter, client: PopNow) -> None:
-    route = mock.post(f"{BASE}/api/v1/jobs/quote").respond(
-        200,
-        json=envelope(
-            {
-                "quoteId": "q_1",
-                "model": MODEL,
-                "maxCredits": 68,
-                "expectedCredits": 68,
-                "estimatedCost": "0.068",
-                "maxCharge": "0.068",
-                "currency": "USD",
-                "quantity": "5",
-                "unit": "per_second",
-                "expiresAt": "2026-10-16T09:25:00Z",
-            }
-        ),
-    )
+    route = mock.post(f"{BASE}/api/v1/jobs/quote").respond(200, json=envelope(QUOTE))
     quote = client.jobs.quote(model=MODEL, input=INPUT)
     assert json.loads(route.calls.last.request.content) == {"model": MODEL, "input": INPUT}
     assert quote.quote_id == "q_1"
-    assert quote.max_credits == 68
+    assert quote.max_charge_usd == "0.225"
+    assert quote.expected_charge_usd == "0.1875"
+    assert quote.currency == "USD"
     assert quote.unit == "per_second"
+    # Deprecated credit projections still parse.
+    assert quote.max_credits == 225 and quote.expected_credits == 188
+
+
+def test_quote_legacy_shape_fills_usd_fields() -> None:
+    from popnow.types import TaskQuote
+
+    quote = TaskQuote.from_dict(
+        {"quoteId": "q", "model": "m", "maxCharge": "0.045", "expectedCharge": "0.03", "maxCredits": 45, "expectedCredits": 30}
+    )
+    assert quote.max_charge_usd == "0.045"
+    assert quote.expected_charge_usd == "0.03"
+    assert quote.max_credits == 45 and quote.expected_credits == 30
 
 
 def test_create_sends_body_headers_and_generates_idempotency_key(mock: respx.MockRouter, client: PopNow) -> None:
@@ -55,7 +72,7 @@ def test_create_sends_body_headers_and_generates_idempotency_key(mock: respx.Moc
         input=INPUT,
         callback_url="https://your-app.example.com/hooks/popnow",
         quote_id="q_1",
-        expected_credits=68,
+        expected_cost_usd="0.225",
         retention_seconds=3600,
     )
     request = route.calls.last.request
@@ -65,15 +82,37 @@ def test_create_sends_body_headers_and_generates_idempotency_key(mock: respx.Moc
         "input": INPUT,
         "callBackUrl": "https://your-app.example.com/hooks/popnow",
         "quoteId": "q_1",
-        "expectedCredits": 68,
+        "expectedCostUsd": "0.225",
     }
     assert request.headers["idempotency-key"]
     assert request.headers["x-popnow-retention"] == "3600"
     assert "wait" not in request.url.params
     assert created.task_id == "job_1"
     assert created.state == "queued"
-    assert created.estimated_credits == 34
+    assert created.estimated_cost_usd == "0.225"
+    assert created.estimated_credits == 225
     assert created.task is None
+
+
+def test_create_keeps_usd_exact(mock: respx.MockRouter, client: PopNow) -> None:
+    route = mock.post(f"{BASE}/api/v1/jobs/createTask").respond(202, json=envelope(CREATED))
+    client.jobs.create(model=MODEL, input=INPUT, expected_cost_usd=decimal.Decimal("1E-9"))
+    assert json.loads(route.calls.last.request.content)["expectedCostUsd"] == "0.000000001"
+    client.jobs.create(model=MODEL, input=INPUT, expected_cost_usd=decimal.Decimal("0.225000000"))
+    assert json.loads(route.calls.last.request.content)["expectedCostUsd"] == "0.225000000"
+    with pytest.raises(TypeError, match="decimal string"):
+        client.jobs.create(model=MODEL, input=INPUT, expected_cost_usd=0.225)  # type: ignore[arg-type]
+    assert route.call_count == 2
+
+
+def test_create_legacy_confirmation_still_works_but_warns(mock: respx.MockRouter, client: PopNow) -> None:
+    route = mock.post(f"{BASE}/api/v1/jobs/createTask").respond(202, json=envelope(CREATED))
+    with pytest.warns(DeprecationWarning, match="expected_credits"):
+        client.jobs.create(model=MODEL, input=INPUT, quote_id="q_1", expected_credits=225)
+    assert json.loads(route.calls.last.request.content)["expectedCredits"] == 225
+    with pytest.warns(DeprecationWarning, match="expected_cost_usd"):
+        client.jobs.create(model=MODEL, input=INPUT, expected_cost="0.225")
+    assert json.loads(route.calls.last.request.content)["expectedCost"] == "0.225"
 
 
 def test_create_retries_with_the_same_idempotency_key(
@@ -116,7 +155,9 @@ def test_get_parses_record(mock: respx.MockRouter, client: PopNow) -> None:
     task = client.jobs.get("job_1")
     assert route.calls.last.request.url.params["taskId"] == "job_1"
     assert task.task_id == "job_1"
-    assert task.credits == 2
+    assert task.cost_usd == "0.01"
+    assert task.settled is True
+    assert task.credits == 10  # deprecated, still parsed
     asset = task.assets[0]
     assert asset.mime == "image/png" and asset.width == 1024
     assert asset.expires_at == "2026-10-16T09:20:00Z"
@@ -178,6 +219,7 @@ def test_list_and_iter_follow_cursor(mock: respx.MockRouter, client: PopNow) -> 
         "state": "failed",
         "cost": "0",
         "credits": 0,
+        "exactCredits": "0",
         "settled": True,
         "createdAt": "2026-10-02T00:00:00Z",
         "deadlineAt": "2026-10-02T00:30:00Z",
@@ -188,8 +230,9 @@ def test_list_and_iter_follow_cursor(mock: respx.MockRouter, client: PopNow) -> 
             respx.MockResponse(200, json=envelope({"items": [dict(item, taskId="job_2")], "hasMore": False})),
         ]
     )
-    ids = [t.task_id for t in client.jobs.iter(state="failed", from_date="2026-10-01", limit=1)]
-    assert ids == ["job_1", "job_2"]
+    items = list(client.jobs.iter(state="failed", from_date="2026-10-01", limit=1))
+    assert [t.task_id for t in items] == ["job_1", "job_2"]
+    assert items[0].cost == "0" and items[0].settled is True
     first, second = (call.request.url.params for call in route.calls)
     assert first["state"] == "failed" and first["from"] == "2026-10-01" and first["limit"] == "1"
     assert "cursor" not in first

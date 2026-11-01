@@ -52,7 +52,7 @@ class Models:
         include_schema: bool = False,
         include_examples: bool = False,
     ) -> ModelList:
-        """Every image, video and audio model this key can call, with its credit price.
+        """Every image, video and audio model this key can call, with its USD rate (``model.usd``).
 
         Args:
             modality: ``"image"``, ``"video"`` or ``"audio"``.

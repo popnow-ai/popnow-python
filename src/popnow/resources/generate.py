@@ -25,7 +25,15 @@ if TYPE_CHECKING:  # pragma: no cover
 
 __all__ = ["Images", "Videos", "Audio", "AsyncImages", "AsyncVideos", "AsyncAudio"]
 
-_CREATE_OPTIONS = ("callback_url", "idempotency_key", "quote_id", "expected_credits", "expected_cost", "retention_seconds")
+_CREATE_OPTIONS = (
+    "callback_url",
+    "idempotency_key",
+    "quote_id",
+    "expected_cost_usd",
+    "expected_credits",
+    "expected_cost",
+    "retention_seconds",
+)
 
 
 def _split(fields: Mapping[str, Any], params: Dict[str, Any]) -> "tuple[Dict[str, Any], Dict[str, Any]]":
@@ -102,7 +110,7 @@ class Images(_SyncGenerator):
 
         Extra keyword arguments (``aspect_ratio``, ``seed`` ...) become model input
         fields; ``callback_url``, ``idempotency_key``, ``retention_seconds``,
-        ``quote_id`` and ``expected_credits`` are passed to ``jobs.create``.
+        ``quote_id`` and ``expected_cost_usd`` are passed to ``jobs.create``.
         Raises :class:`~popnow.TaskFailedError` unless the task succeeds.
         """
         return self._run(model, {"prompt": prompt}, params, timeout)

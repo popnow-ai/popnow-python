@@ -108,7 +108,7 @@ class AsyncPopNow(AsyncAPIClient):
         async def main() -> None:
             async with AsyncPopNow() as client:
                 balance = await client.account.balance()
-                print(balance.available_credits)
+                print(balance.available_usd)
 
         asyncio.run(main())
     """

@@ -23,6 +23,7 @@ __all__ = [
     "BadRequestError",
     "AuthenticationError",
     "PaymentRequiredError",
+    "InsufficientBalanceError",
     "InsufficientCreditsError",
     "SpendCapExceededError",
     "PermissionDeniedError",
@@ -113,8 +114,15 @@ class PaymentRequiredError(APIError):
     """HTTP ``402``."""
 
 
-class InsufficientCreditsError(PaymentRequiredError):
-    """``40201``: the balance cannot cover this task's hold."""
+class InsufficientBalanceError(PaymentRequiredError):
+    """``40201``: the available API balance (USD) cannot cover this task's hold.
+
+    Add funds at https://popnow.ai/api/console/billing.
+    """
+
+
+#: Deprecated alias of :class:`InsufficientBalanceError` (the same class), kept for compatibility.
+InsufficientCreditsError = InsufficientBalanceError
 
 
 class SpendCapExceededError(PaymentRequiredError):
@@ -214,7 +222,7 @@ _CODE_MAP: Dict[int, Type[APIError]] = {
     40003: BadRequestError,
     40004: BadRequestError,
     401: AuthenticationError,
-    40201: InsufficientCreditsError,
+    40201: InsufficientBalanceError,
     40202: SpendCapExceededError,
     403: PermissionDeniedError,
     40301: PermissionDeniedError,

@@ -9,7 +9,7 @@
 
   <h1>PopNow Python SDK: AI Video, Image and Music Generation API</h1>
 
-  <p><strong>popnow</strong> is a typed Python client for the PopNow API that turns text, images and audio into AI videos, images, music and speech, using the same models, prices and credits as <a href="https://popnow.ai">popnow.ai</a>.</p>
+  <p><strong>popnow</strong> is a typed Python client for the PopNow API that turns text, images and audio into AI videos, images, music and speech, with the same models and model prices as <a href="https://popnow.ai">popnow.ai</a>, billed in USD from a separate API balance.</p>
 
   <p>
     <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
@@ -20,12 +20,13 @@
   </p>
 </div>
 
-PopNow is a browser-based AI studio for videos, images and music: image-to-video, text-to-video, AI images, music and speech, one-tap trending video effects and image styles. This SDK wraps its developer API (`https://api.popnow.ai/api/v1`) so you can call Kling, Seedance, Wan, Vidu, MiniMax, Nano Banana, GPT Image, Flux, Suno and more from Python. Credit packs, no subscription; failed runs are refunded. *Make it pop.*
+PopNow is a browser-based AI studio for videos, images and music: image-to-video, text-to-video, AI images, music and speech, one-tap trending video effects and image styles. This SDK wraps its developer API (`https://api.popnow.ai/api/v1`) so you can call Kling, Seedance, Wan, Vidu, MiniMax, Nano Banana, GPT Image, Flux, Suno and more from Python. Pay as you go in USD from your API balance, no subscription; failed runs release their hold and cost nothing. *Make it pop.*
 
 - Sync **and** async clients (`PopNow`, `AsyncPopNow`) built on `httpx`, the only dependency.
 - Typed results (`py.typed`) with snake_case attributes, plus the raw JSON on every object.
 - One-line helpers: `client.images.generate()`, `client.videos.generate()`, `client.audio.speech()`.
 - Safe retries: automatic `Idempotency-Key`, back-off on `429` / `500` / `503` honouring `Retry-After`.
+- Exact money: every USD amount stays a decimal string (`cost_usd`, `max_charge_usd`, `available_usd`), never a float.
 - Local file uploads, asset library, task history, usage, balance and webhook signature verification.
 
 ## Quickstart
@@ -36,7 +37,7 @@ PopNow is a browser-based AI studio for videos, images and music: image-to-video
 pip install popnow
 ```
 
-**2. Create an API key** in the [API console](https://popnow.ai/api/console/keys) and export it:
+**2. Create an API key** in the [API console](https://popnow.ai/api/console/keys), add funds to your API balance in [API billing](https://popnow.ai/api/console/billing), and export the key:
 
 ```bash
 export POPNOW_API_KEY="sk-popnow-..."
@@ -53,18 +54,18 @@ task = client.images.generate(
     model="alibaba/z-image-turbo/text-to-image",
     prompt="A small red fox curled up in a teacup, soft morning light",
 )
-print(task.state, task.credits, task.urls[0])
+print(task.state, task.cost_usd, "USD", task.urls[0])
 client.files.download(task.assets[0], "fox.png")
 ```
 
-That image costs about 10 credits (1 credit = $0.001). Buy credits on the [pricing page](https://popnow.ai/pricing); API calls and the website share one wallet.
+That image costs about $0.01, paid from your API balance. The API balance is in USD and separate from popnow.ai website credits: fund it in [API billing](https://popnow.ai/api/console/billing) and see per-model prices on [API pricing](https://popnow.ai/api/pricing).
 
 ## What you can call
 
 | Area | SDK | API endpoint |
 | --- | --- | --- |
-| Models and prices | `client.models.list()`, `client.models.get(id)` | `GET /api/v1/models`, `GET /api/v1/models/{model}` |
-| Price a request | `client.jobs.quote()` | `POST /api/v1/jobs/quote` |
+| Models and USD rates | `client.models.list()`, `client.models.get(id)` | `GET /api/v1/models`, `GET /api/v1/models/{model}` |
+| Price a request in USD | `client.jobs.quote()` | `POST /api/v1/jobs/quote` |
 | Create a task | `client.jobs.create()` | `POST /api/v1/jobs/createTask` |
 | Read / wait | `client.jobs.get()`, `client.jobs.wait()` | `GET /api/v1/jobs/recordInfo` |
 | Task history | `client.jobs.list()`, `client.jobs.iter()` | `GET /api/v1/jobs` |
@@ -73,12 +74,12 @@ That image costs about 10 credits (1 credit = $0.001). Buy credits on the [prici
 | Upload a file | `client.files.upload(path)` | `POST /api/v1/common/upload-url`, `PUT`, `POST /api/v1/files/{id}/commit` |
 | Import a LoRA | `client.files.import_lora(url)` | `POST /api/v1/files/import` |
 | Asset library | `client.assets.*` | `/api/v1/assets*` |
-| Balance / usage | `client.account.balance()`, `client.account.usage()` | `GET /api/v1/chat/credit`, `GET /api/v1/usage` |
+| API balance / usage (USD) | `client.account.balance()`, `client.account.usage()` | `GET /api/v1/chat/credit` (historical path name), `GET /api/v1/usage` |
 | Webhooks | `popnow.webhooks.verify_task_callback()` | `X-Webhook-Signature` header |
 
 ### Supported models
 
-Model ids look like `<maker>/<model>/<task>`. Some examples; the live list with prices is `client.models.list()` or [popnow.ai/docs/models](https://popnow.ai/docs/models):
+Model ids look like `<maker>/<model>/<task>`. Some examples; the live list with USD prices is `client.models.list()` or [popnow.ai/api/models](https://popnow.ai/api/models):
 
 | Kind | Example model ids |
 | --- | --- |
@@ -135,20 +136,23 @@ body = {
 }
 
 quote = client.jobs.quote(**body)                 # nothing is created or held
+print(quote.max_charge_usd, quote.expected_charge_usd)  # "0.45" "0.45": exact USD strings
 created = client.jobs.create(
     **body,
     idempotency_key=new_idempotency_key(),        # reuse it on every retry of this work
     quote_id=quote.quote_id,
-    expected_credits=quote.max_credits,           # QuoteMismatchError (40901) if the price changed
+    expected_cost_usd=quote.max_charge_usd,       # QuoteMismatchError (40901) if the price changed
     callback_url="https://your-app.example.com/hooks/popnow",
 )
+print(created.estimated_cost_usd)                 # the USD held now; unused funds are released
 task = client.jobs.wait(created, timeout=1800)    # polls with back-off: 2s, 3s, 4.5s ... up to 15s
 if task.is_succeeded:
-    print(task.urls)
+    print(task.cost_usd, task.urls)               # final USD charge once task.settled is true
 else:
     print(task.state, task.error_code, task.error_message)
 ```
 
+- `max_charge_usd` is the most the task can cost and the amount held when it is accepted; confirm it with `expected_cost_usd` (or send `quote_id` alone). `expected_charge_usd` is the typical charge, for display only.
 - `jobs.create(..., wait=60)` holds the connection up to 60 seconds; if the task finishes in time, `created.task` is the full record.
 - `jobs.create_and_wait(model=..., input=...)` combines the server-side wait with polling.
 - Task states: `queued`, `running`, then `succeeded`, `failed` or `expired`. Unknown states count as not final.
@@ -176,7 +180,7 @@ async def main() -> None:
     async with AsyncPopNow() as client:
         balance = await client.account.balance()
         task = await client.images.generate(model="alibaba/z-image-turbo/text-to-image", prompt="A paper boat")
-        print(balance.available_credits, task.urls)
+        print(balance.available_usd, task.cost_usd, task.urls)
 
 asyncio.run(main())
 ```
@@ -222,7 +226,7 @@ Every error response is `{"code", "msg", "request_id"}`. The SDK raises a typed 
 | --- | --- |
 | `BadRequestError` | `400`, `40003`, `40004` |
 | `AuthenticationError` | `401` |
-| `InsufficientCreditsError` / `SpendCapExceededError` (both `PaymentRequiredError`) | `40201` / `40202` |
+| `InsufficientBalanceError` / `SpendCapExceededError` (both `PaymentRequiredError`) | `40201` / `40202` |
 | `PermissionDeniedError` | `403`, `40301`, `40302`, `40303`, `40310` |
 | `NotFoundError` | `404` |
 | `ConflictError` / `QuoteMismatchError` | `409` / `40901` |
@@ -234,15 +238,15 @@ Every error response is `{"code", "msg", "request_id"}`. The SDK raises a typed 
 | `TaskFailedError` | task ended `failed` or `expired` (see `err.error_code`) |
 | `WaitTimeoutError` | the local wait budget ran out; the task keeps running |
 
-All API errors carry `code`, `status_code`, `message`, `request_id` and, for some asset and content errors, `reason` (`data.reason`).
+All API errors carry `code`, `status_code`, `message`, `request_id` and, for some asset and content errors, `reason` (`data.reason`). `InsufficientCreditsError` is a deprecated alias of `InsufficientBalanceError`.
 
 ```python
-from popnow import APIError, InsufficientCreditsError, RateLimitError
+from popnow import APIError, InsufficientBalanceError, RateLimitError
 
 try:
     client.jobs.create(model="kling/3.0/text-to-video", input={"prompt": "A koi pond in the rain"})
-except InsufficientCreditsError:
-    print("Top up at https://popnow.ai/pricing")
+except InsufficientBalanceError:
+    print("Add funds at https://popnow.ai/api/console/billing")
 except RateLimitError as err:
     print("retry in", err.retry_after, "seconds")
 except APIError as err:
@@ -263,7 +267,11 @@ Call `client.videos.generate(model="alibaba/wan-3.0/image-to-video", image_url=.
 
 ### How much does the PopNow API cost?
 
-The API uses the same credits and prices as popnow.ai: 1 credit = $0.001, bought in credit packs with no subscription. Each model lists its price in `client.models.get(id).credits`, and `client.jobs.quote()` returns the exact amount for one request. Failed and expired tasks release their hold, so they cost nothing.
+The API bills in USD from its own API balance, which starts at $0 and is separate from popnow.ai website credits. A model costs the same on the API as on popnow.ai for the same settings, with no subscription. Each model lists its USD rate in `client.models.get(id).usd`, and `client.jobs.quote()` returns the exact amount for one request (`max_charge_usd`). Failed and expired tasks release their hold, so they cost nothing. See [API pricing](https://popnow.ai/api/pricing) and add funds in [API billing](https://popnow.ai/api/console/billing).
+
+### Why are amounts strings?
+
+USD amounts are exact decimal strings with up to nine decimal places (`"0.000125"`). Keep them as strings or use `decimal.Decimal`; converting through `float` can lose precision. The older credit fields (`task.credits`, `quote.max_credits`, `balance.available_credits`, `expected_credits=` ...) still work but are deprecated display projections at 1 credit = $0.001, not billing units; they may be removed in a future major version.
 
 ### How do I retry an AI generation request without being charged twice?
 
@@ -285,19 +293,21 @@ Kling, Seedance, Wan, Vidu, MiniMax, Nano Banana, GPT Image, Flux, Seedream, Sun
 
 Yes. `AsyncPopNow` has the same resources and helpers as `PopNow`, with `await`. Combine it with `asyncio.gather` to run many tasks at once within the rate limits.
 
-### Can I use PopNow from an AI assistant instead of code?
+### Can I use PopNow from an AI coding agent instead of code?
 
-Yes. PopNow runs a remote MCP server at `https://api.popnow.ai/mcp` with tools for images, video, music, speech and effects. See [popnow.ai/mcp](https://popnow.ai/mcp).
+Yes. The PopNow developer MCP server at `https://api.popnow.ai/api/v1/mcp` works with Claude Code, Cursor, Codex, VS Code and other MCP clients, using the same API key and USD API balance as this SDK. See [popnow.ai/api/mcp](https://popnow.ai/api/mcp) and [popnow-api-mcp](https://github.com/popnow-ai/popnow-api-mcp). Ready-made agent skills are at [popnow.ai/api/skills](https://popnow.ai/api/skills).
 
 ## Links
 
 - Website: [popnow.ai](https://popnow.ai)
 - Docs: [popnow.ai/docs](https://popnow.ai/docs)
 - API reference (OpenAPI): [popnow.ai/docs/openapi.yaml](https://popnow.ai/docs/openapi.yaml)
-- Pricing: [popnow.ai/pricing](https://popnow.ai/pricing)
-- MCP server: [popnow.ai/mcp](https://popnow.ai/mcp)
+- API pricing: [popnow.ai/api/pricing](https://popnow.ai/api/pricing)
+- API billing (add funds): [popnow.ai/api/console/billing](https://popnow.ai/api/console/billing)
+- Developer MCP server: [popnow.ai/api/mcp](https://popnow.ai/api/mcp)
+- Agent skills: [popnow.ai/api/skills](https://popnow.ai/api/skills)
 - llms.txt: [popnow.ai/llms.txt](https://popnow.ai/llms.txt)
-- Other PopNow repos: [popnow-mcp](https://github.com/popnow-ai/popnow-mcp), [popnow-skills](https://github.com/popnow-ai/popnow-skills), [popnow-js](https://github.com/popnow-ai/popnow-js), [popnow-api](https://github.com/popnow-ai/popnow-api), [popnow-blender](https://github.com/popnow-ai/popnow-blender)
+- Other PopNow repos: [popnow-api-mcp](https://github.com/popnow-ai/popnow-api-mcp), [popnow-skills](https://github.com/popnow-ai/popnow-skills), [popnow-js](https://github.com/popnow-ai/popnow-js), [popnow-api](https://github.com/popnow-ai/popnow-api), [popnow-blender](https://github.com/popnow-ai/popnow-blender)
 
 ## Contributing
 

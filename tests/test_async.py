@@ -19,12 +19,23 @@ async def test_async_balance_and_errors(mock: respx.MockRouter, sleeps: List[flo
     mock.get(f"{BASE}/api/v1/chat/credit").respond(
         200,
         json=envelope(
-            {"available": "0.1", "held": "0", "total": "0.1", "availableCredits": 100, "heldCredits": 0, "totalCredits": 100}
+            {
+                "availableUsd": "0.1",
+                "heldUsd": "0",
+                "totalUsd": "0.1",
+                "available": "0.1",
+                "held": "0",
+                "total": "0.1",
+                "availableCredits": 100,
+                "heldCredits": 0,
+                "totalCredits": 100,
+            }
         ),
     )
     mock.get(f"{BASE}/api/v1/jobs/recordInfo").respond(404, json=envelope(code=404, msg="Not found"))
     async with AsyncPopNow(api_key=API_KEY) as client:
         balance = await client.account.balance()
+        assert balance.available_usd == "0.1"
         assert balance.available_credits == 100
         with pytest.raises(popnow.NotFoundError):
             await client.jobs.get("job_missing")
@@ -37,7 +48,14 @@ async def test_async_retry_and_wait(mock: respx.MockRouter, sleeps: List[float])
             respx.MockResponse(
                 202,
                 json=envelope(
-                    {"taskId": "job_1", "state": "queued", "estimatedCredits": 1, "estimatedCost": "0.001", "deadlineAt": "x"}
+                    {
+                        "taskId": "job_1",
+                        "state": "queued",
+                        "estimatedCostUsd": "0.01",
+                        "estimatedCost": "0.01",
+                        "estimatedCredits": 10,
+                        "deadlineAt": "x",
+                    }
                 ),
             ),
         ]
@@ -95,9 +113,24 @@ async def test_async_iter_and_upload(mock: respx.MockRouter, sleeps: List[float]
 
 async def test_async_quote_body(mock: respx.MockRouter, sleeps: List[float]) -> None:
     route = mock.post(f"{BASE}/api/v1/jobs/quote").respond(
-        200, json=envelope({"quoteId": "q", "model": "m", "maxCredits": 5, "expectedCredits": 5})
+        200,
+        json=envelope(
+            {"quoteId": "q", "model": "m", "maxChargeUsd": "0.005", "expectedChargeUsd": "0.005", "maxCredits": 5, "expectedCredits": 5}
+        ),
+    )
+    create = mock.post(f"{BASE}/api/v1/jobs/createTask").respond(
+        202,
+        json=envelope({"taskId": "job_1", "state": "queued", "estimatedCostUsd": "0.005", "deadlineAt": "x"}),
     )
     async with AsyncPopNow(api_key=API_KEY) as client:
         quote = await client.jobs.quote(model="m", input={"prompt": "x"})
+        created = await client.jobs.create(
+            model="m", input={"prompt": "x"}, quote_id=quote.quote_id, expected_cost_usd=quote.max_charge_usd
+        )
     assert json.loads(route.calls.last.request.content) == {"model": "m", "input": {"prompt": "x"}}
+    assert quote.max_charge_usd == "0.005"
     assert quote.max_credits == 5
+    sent = json.loads(create.calls.last.request.content)
+    assert sent["quoteId"] == "q" and sent["expectedCostUsd"] == "0.005"
+    assert "expectedCredits" not in sent
+    assert created.estimated_cost_usd == "0.005"

@@ -28,4 +28,4 @@ except TaskFailedError as err:
     raise SystemExit(1)
 
 out = client.files.download(task.assets[0], photo.with_suffix(".mp4"))
-print("saved", out, "for", task.credits, "credits")
+print("saved", out, "for", task.cost_usd, "USD")

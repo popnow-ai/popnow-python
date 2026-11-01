@@ -25,6 +25,8 @@ def test_images_generate_builds_input_and_passes_options(mock: respx.MockRouter,
         seed=None,
         idempotency_key="fox-1",
         callback_url="https://your-app.example.com/hooks/popnow",
+        quote_id="q_1",
+        expected_cost_usd="0.01",
     )
     request = route.calls.last.request
     body = json.loads(request.content)
@@ -32,6 +34,8 @@ def test_images_generate_builds_input_and_passes_options(mock: respx.MockRouter,
         "model": "alibaba/z-image-turbo/text-to-image",
         "input": {"prompt": "A small red fox curled up in a teacup", "aspect_ratio": "1:1"},
         "callBackUrl": "https://your-app.example.com/hooks/popnow",
+        "quoteId": "q_1",
+        "expectedCostUsd": "0.01",
     }
     assert request.headers["idempotency-key"] == "fox-1"
     assert request.url.params["wait"] == "60"
@@ -52,7 +56,14 @@ def test_videos_generate_polls_after_server_wait(mock: respx.MockRouter, client:
     create = mock.post(f"{BASE}/api/v1/jobs/createTask").respond(
         202,
         json=envelope(
-            {"taskId": "job_1", "state": "queued", "estimatedCredits": 34, "estimatedCost": "0.034", "deadlineAt": "x"}
+            {
+                "taskId": "job_1",
+                "state": "queued",
+                "estimatedCostUsd": "0.225",
+                "estimatedCost": "0.225",
+                "estimatedCredits": 225,
+                "deadlineAt": "x",
+            }
         ),
     )
     mock.get(f"{BASE}/api/v1/jobs/recordInfo").mock(side_effect=[_terminal("running"), _terminal("succeeded")])

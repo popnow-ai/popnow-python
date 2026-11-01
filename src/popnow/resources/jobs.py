@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import decimal
 import time
 import uuid
+import warnings
 from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, Iterator, Mapping, Optional, Union
 
 from .. import _base_client
@@ -24,9 +26,42 @@ DEFAULT_MAX_POLL_INTERVAL = 15.0
 POLL_BACKOFF = 1.5
 
 
+#: A USD amount for the API: a decimal string such as ``"0.45"``, or a :class:`decimal.Decimal`.
+USDAmount = Union[str, decimal.Decimal]
+
+
 def new_idempotency_key() -> str:
     """A fresh random idempotency key. Create it once per logical piece of work."""
     return str(uuid.uuid4())
+
+
+def _usd_string(name: str, value: USDAmount) -> str:
+    # Money stays exact: strings pass through, Decimal is written without an exponent, float is refused.
+    if isinstance(value, str):
+        return value
+    if isinstance(value, decimal.Decimal):
+        return format(value, "f")
+    if isinstance(value, int) and not isinstance(value, bool):
+        return str(value)
+    raise TypeError(
+        f"{name} must be a USD decimal string such as '0.45' or a decimal.Decimal, not {type(value).__name__}"
+    )
+
+
+def _warn_deprecated(expected_credits: Optional[int], expected_cost: Optional[USDAmount]) -> None:
+    if expected_credits is not None:
+        warnings.warn(
+            "expected_credits is deprecated: credits are a display projection, not a billing unit. "
+            "Pass expected_cost_usd=quote.max_charge_usd (or quote_id alone) instead.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+    if expected_cost is not None:
+        warnings.warn(
+            "expected_cost is a deprecated alias; pass expected_cost_usd instead.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
 
 
 def _task_body(
@@ -35,17 +70,20 @@ def _task_body(
     callback_url: Optional[str],
     quote_id: Optional[str] = None,
     expected_credits: Optional[int] = None,
-    expected_cost: Optional[str] = None,
+    expected_cost: Optional[USDAmount] = None,
+    expected_cost_usd: Optional[USDAmount] = None,
 ) -> Dict[str, Any]:
     body: Dict[str, Any] = {"model": model, "input": dict(input)}
     if callback_url is not None:
         body["callBackUrl"] = callback_url
     if quote_id is not None:
         body["quoteId"] = quote_id
+    if expected_cost_usd is not None:
+        body["expectedCostUsd"] = _usd_string("expected_cost_usd", expected_cost_usd)
+    if expected_cost is not None:
+        body["expectedCost"] = _usd_string("expected_cost", expected_cost)
     if expected_credits is not None:
         body["expectedCredits"] = expected_credits
-    if expected_cost is not None:
-        body["expectedCost"] = expected_cost
     return body
 
 
@@ -110,10 +148,11 @@ class Jobs:
     def quote(
         self, *, model: str, input: Mapping[str, Any], callback_url: Optional[str] = None
     ) -> TaskQuote:
-        """Price a request without creating a task or holding credits.
+        """Price a request in USD without creating a task or holding funds.
 
-        Pass the returned ``quote_id`` and ``max_credits`` to :meth:`create`
-        (as ``expected_credits``) within five minutes to lock the price.
+        Show ``max_charge_usd`` (the exact maximum hold) to the user, then pass
+        ``quote_id`` and ``expected_cost_usd=quote.max_charge_usd`` to
+        :meth:`create` within five minutes to lock the price.
         """
         result = self._client._request("POST", "/api/v1/jobs/quote", json=_task_body(model, input, callback_url))
         return TaskQuote.from_dict(result.data)
@@ -127,9 +166,10 @@ class Jobs:
         idempotency_key: Optional[str] = None,
         quote_id: Optional[str] = None,
         expected_credits: Optional[int] = None,
-        expected_cost: Optional[str] = None,
+        expected_cost: Optional[USDAmount] = None,
         retention_seconds: Optional[int] = None,
         wait: Optional[int] = None,
+        expected_cost_usd: Optional[USDAmount] = None,
     ) -> TaskCreated:
         """Create an asynchronous generation task.
 
@@ -139,17 +179,25 @@ class Jobs:
             callback_url: Public HTTPS URL that receives the finished task.
             idempotency_key: Reuse the same key when retrying the same work.
                 One is generated for you when omitted.
-            quote_id / expected_credits / expected_cost: Lock a quoted price.
+            quote_id: The ``quote_id`` from :meth:`quote`. Alone it locks the quoted price.
+            expected_cost_usd: The USD hold you confirmed, normally
+                ``quote.max_charge_usd``: a decimal string (or ``decimal.Decimal``)
+                with up to nine decimal places. A different price raises
+                :class:`~popnow.QuoteMismatchError` (40901) and nothing is held.
+            expected_credits: Deprecated. Integer credit projection; use
+                ``expected_cost_usd`` or ``quote_id``.
+            expected_cost: Deprecated alias of ``expected_cost_usd``.
             retention_seconds: Shorten how long outputs and prompt are kept.
             wait: Hold the connection up to this many seconds (max 60). When the
                 task finishes in time, ``TaskCreated.task`` holds the full record.
         """
+        _warn_deprecated(expected_credits, expected_cost)
         wait_s = _wait_param(wait)
         result = self._client._request(
             "POST",
             "/api/v1/jobs/createTask",
             params={"wait": wait_s},
-            json=_task_body(model, input, callback_url, quote_id, expected_credits, expected_cost),
+            json=_task_body(model, input, callback_url, quote_id, expected_credits, expected_cost, expected_cost_usd),
             headers=_create_headers(idempotency_key, retention_seconds),
             timeout=self._client._effective_timeout(None, extra=float(wait_s or 0)),
         )
@@ -294,16 +342,18 @@ class AsyncJobs:
         idempotency_key: Optional[str] = None,
         quote_id: Optional[str] = None,
         expected_credits: Optional[int] = None,
-        expected_cost: Optional[str] = None,
+        expected_cost: Optional[USDAmount] = None,
         retention_seconds: Optional[int] = None,
         wait: Optional[int] = None,
+        expected_cost_usd: Optional[USDAmount] = None,
     ) -> TaskCreated:
+        _warn_deprecated(expected_credits, expected_cost)
         wait_s = _wait_param(wait)
         result = await self._client._request(
             "POST",
             "/api/v1/jobs/createTask",
             params={"wait": wait_s},
-            json=_task_body(model, input, callback_url, quote_id, expected_credits, expected_cost),
+            json=_task_body(model, input, callback_url, quote_id, expected_credits, expected_cost, expected_cost_usd),
             headers=_create_headers(idempotency_key, retention_seconds),
             timeout=self._client._effective_timeout(None, extra=float(wait_s or 0)),
         )
