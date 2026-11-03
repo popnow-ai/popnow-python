@@ -153,6 +153,7 @@ class OutputAsset(APIObject):
 
 @dataclass
 class TaskOutput(APIObject):
+    embeddings: Optional[Dict[str, Any]] = None
     text: Optional[str] = None
     transcript: Optional[Dict[str, Any]] = None
     assets: List[OutputAsset] = field(default_factory=list)
