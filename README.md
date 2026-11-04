@@ -259,6 +259,13 @@ Branch on `code` (and `task.error_code`), never on message text. Quote `request_
 
 See [`examples/`](examples): `generate_image.py`, `image_to_video.py`, `text_to_speech.py`, `quote_and_create.py`, `async_batch.py`, `save_to_library.py`, `webhook_receiver.py`.
 
+## Claude Code plugin
+
+```text
+/plugin marketplace add popnow-ai/popnow-python
+/plugin install popnow-python-sdk@popnow-python
+```
+
 ## FAQ
 
 ### How do I generate a video from an image with an API in Python?
