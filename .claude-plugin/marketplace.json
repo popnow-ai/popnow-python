@@ -1,0 +1,38 @@
+{
+  "name": "popnow-python",
+  "description": "Helps Claude Code integrate the PopNow Python SDK (pip: popnow) into an app: AI image, video, music, speech and transcription with exact USD quotes, idempotent jobs, async client, uploads and verified webhooks.",
+  "owner": {
+    "name": "PopNow",
+    "url": "https://popnow.ai"
+  },
+  "plugins": [
+    {
+      "name": "popnow-python-sdk",
+      "source": "./",
+      "description": "Helps Claude Code integrate the PopNow Python SDK (pip: popnow) into an app: AI image, video, music, speech and transcription with exact USD quotes, idempotent jobs, async client, uploads and verified webhooks.",
+      "version": "1.0.0",
+      "author": {
+        "name": "PopNow",
+        "email": "support@popnow.ai",
+        "url": "https://popnow.ai"
+      },
+      "homepage": "https://popnow.ai/docs",
+      "repository": "https://github.com/popnow-ai/popnow-python",
+      "license": "MIT",
+      "category": "development",
+      "keywords": [
+        "python",
+        "sdk",
+        "asyncio",
+        "developer-tools",
+        "popnow",
+        "ai-video",
+        "ai-image",
+        "ai-music",
+        "text-to-speech",
+        "text-to-video",
+        "image-to-video"
+      ]
+    }
+  ]
+}
