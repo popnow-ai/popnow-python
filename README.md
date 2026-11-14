@@ -20,7 +20,7 @@
   </p>
 </div>
 
-PopNow AI ([popnow.ai](https://popnow.ai)) is the world's first AI creative studio that pays you back, a browser-based studio for videos, images and music: image-to-video, text-to-video, AI images, music and speech, one-tap trending video effects and image styles. This SDK wraps its developer API (`https://api.popnow.ai/api/v1`) so you can call Kling, Seedance, Wan, Vidu, MiniMax, Nano Banana, GPT Image, Flux, Suno and more from Python. Pay as you go in USD from your API balance, no subscription; failed runs release their hold and cost nothing. *Make it pop.*
+PopNow AI ([popnow.ai](https://popnow.ai)) is the world's first AI studio with automatic price protection, a browser-based studio for videos, images and music: image-to-video, text-to-video, AI images, music and speech, one-tap trending video effects and image styles. This SDK wraps its developer API (`https://api.popnow.ai/api/v1`) so you can call Kling, Seedance, Wan, Vidu, MiniMax, Nano Banana, GPT Image, Flux, Suno and more from Python. Pay as you go in USD from your API balance, no subscription; failed runs release their hold and cost nothing. *Make it pop.*
 
 Every API call is quoted in USD before it runs, and failed tasks are refunded to your API balance automatically.
 
